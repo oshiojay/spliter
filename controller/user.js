@@ -3,22 +3,26 @@ const cloudinary = require('../middleware/cloudinary')
 const fs = require('fs');
 const {brevo} = require('../utils/brevo')
 const bcryot = require('bcrypt')
-const emailTemplate = require('../email')
+const {emailTemplate, resetPasswordTemplate} = require('../email')
 const jwt = require('jsonwebtoken')
+const otpGenerator = require('otp-generator')
 
 exports.createUser = async(req, res)=>{
     try {
 
         const {fullname,email,phoneNumber,password}= req.body
 
+        const otp = otpGenerator.generate(6, {upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false})
+
         const salt = await bcryot.genSalt(10)
         const hashedPassword = await bcryot.hash(password, salt)
 
         const newUser = new userModel({
             fullname,
-            email,
+            email: email.toLowerCase(),
             phoneNumber,
-            password: hashedPassword
+            password: hashedPassword,
+            otp
         })
         brevo(newUser.email, newUser.fullname, emailTemplate(newUser.fullname, newUser.otp))
         await newUser.save()
@@ -50,6 +54,7 @@ exports.updateProfile = async(req, res)=>{
 
         const {bankName, accountNumber} = req.body
         const {id}= req.params
+
         console.log('ID:',id);
         
         const user = await userModel.findById(id);
@@ -86,9 +91,9 @@ exports.verifyEmail = async (req, res)=>{
                 message:'User not found'
             })
         }
-        if(Date.now() > user.otpExpire){
+        if(Date.now() > user.otpExpire || otp !== user.otp){
             return res.status(400).json({
-                message: 'OTP expired'
+                message: 'Invalid OTP'
             })
         }
         user.isVerified = true
@@ -109,7 +114,7 @@ exports.verifyEmail = async (req, res)=>{
 exports.login = async (req, res) => {
     try {
         const {email, password} = req.body;
-        const user = await userModel.findOne({ email: email })
+        const user = await userModel.findOne({ email: email.toLowerCase() })
 
         if (!user){
             return res.status(404).json({
@@ -124,7 +129,7 @@ exports.login = async (req, res) => {
                 message: 'Invalid Credentials'
             })
         }
-        if (user.isVerified = false) {
+        if (user.isVerified == false) {
             return res.status(400).json({
                 message: 'Please verify your email'
             })
@@ -145,6 +150,127 @@ exports.login = async (req, res) => {
         console.log(error.message)
         res.status(500).json({
             message: `Something went wrong`
+        })
+    }
+}
+
+exports.forgetPassword = async (req, res) => {
+    try {
+        const {email} = req.body;
+        const user = await userModel.findOne({email: email.toLowerCase()})
+        if(user == null){
+            return res.status(404).json({
+                message: 'Invalid credential'
+            })
+        }
+        const OTP = Math.round(Math.random() * 1e6).toString().padStart(6, "0")
+
+        user.otp = OTP
+        console.log(OTP)
+        user.otpExpire = Date.now() + (1000 * 60 * 7)
+        
+        const data = {
+            name: user.fullname,
+            otp: OTP
+        }
+        brevo(email, user.fullname, resetPasswordTemplate(data))
+        
+        await user.save()
+
+        res.status(200).json({
+            message: 'Forget password successfull'
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const {otp, password, email} = req.body
+        const user = await userModel.findOne({email: email.toLowerCase()})
+
+        if (user == null) {
+            return res.status(404).json({
+                message: 'Invalid credential'
+            })
+        }
+        if (Date.now() > user.otpExpire || otp !== user.otp){
+            return res.status(400).json({
+                message: 'Invalid or expired OTP'
+            })
+        }
+        const salt = await bcryot.genSalt(10)
+        const hashedPassword = await bcryot.hash(password, salt);
+
+        user.password = hashedPassword
+        
+        await user.save()
+
+         res.status(200).json({
+            message: 'password reset successfull'
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+exports.changePassword = async (req, res) => {
+    try {
+        const { id } = req.user;
+
+        const { oldPassword, newPassword } = req.body;
+        const user = await userModel.findById(id);
+
+        if (!user){
+            return res.status(404).json({
+                message: "User not found"
+            })
+        }
+
+        const checkPassword = await bcryot.compare(oldPassword, user.password);
+        if(!checkPassword){
+            return res.status(400).json({
+                message: "Old password is invalid"
+            })
+        }
+
+        const salt = await bcryot.genSalt(10)
+        const hashedPassword = await bcryot.hash(newPassword, salt);
+
+        user.password = hashedPassword;
+
+        await user.save()
+
+        res.status(200).json({
+            message: "Password changed successfully"
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+exports.loginWithGoogle = async (req, res) => {
+    try {
+        const token = await jwt.sign({
+            id: req.user._id,
+            role: req.user.role
+        }, process.env.SECERT_KEY, {expiresIn: '1d'});
+
+        res.status(200).json({
+            message: 'Login successful',
+            data: req.user.fullname,
+            token
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
         })
     }
 }

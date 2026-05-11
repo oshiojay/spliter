@@ -1,0 +1,207 @@
+openapi: '3.0.0'
+info: 
+  title: documentation for user
+  version: 1.0.0
+  description: This is the documentation for user
+paths: 
+
+
+  /api/v1/user:
+    post:
+      summary: This endpoint is to create a user
+      tags: [users]
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema: 
+              type: object
+              required: 
+                - email
+                - fullname
+                - phoneNumber
+                - password
+              properties:
+                fullname: 
+                  type: string
+                  example: john deo
+                email: 
+                  type: string
+                  example: johndeo@gmail.com
+                phoneNumber: 
+                  type: string
+                  example: 08129139039
+                password: 
+                  type: string 
+      responses: 
+        "201":
+          description: user successfully created
+
+
+
+
+  /api/v1/user/check:
+    post:
+      summary: This endpoint is to verify email
+      tags: [users]
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema: 
+              type: object
+              required: 
+                - email
+                - otp
+              properties:
+                email: 
+                  type: string
+                  example: johndeo@gmail.com
+                otp: 
+                  type: string
+      responses: 
+        "200":
+          description: OTP verified successfully 
+
+           
+  /api/v1/login:
+    post:
+      summary: This endpoint is for login
+      tags: [users]
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema: 
+              type: object
+              required: 
+                - email
+                - password
+              properties:
+                email: 
+                  type: string
+                  example: johndeo@gmail.com
+                password: 
+                  type: string 
+      responses: 
+        "200":
+          description: login successfully 
+
+
+           
+  /api/v1/forget-password:
+    post:
+      summary: This endpoint is forgot password
+      tags: [users]
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema: 
+              type: object
+              required: 
+                - email
+              properties:
+                email: 
+                  type: string
+                  example: johndeo@gmail.com
+      responses: 
+        "200":
+          description: forgot passowrd successfully
+
+
+
+  /api/v1/reset-password:
+    post:
+      summary: This endpoint is to reset password
+      tags: [users]
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema: 
+              type: object
+              required: 
+                - email
+                - otp
+                - password
+                - confirmPassword
+              properties:
+                email: 
+                  type: string
+                  example: johndeo@gmail.com
+                otp: 
+                  type: string
+                password: 
+                  type: string
+                confirmPassword:
+                  type: string
+      responses: 
+        "200":
+          description: reset password successfully
+
+
+
+
+  /api/v1/update/:{id}:
+    put:
+      summary: This endpoint is to upload files
+      parameters:
+        - in: path
+          name: id
+      tags: [users]
+      requestBody:
+        required: true
+        content: 
+          multipart/form-data:
+            schema: 
+              type: object
+              required: 
+                - bankName
+                - accountName
+                - profilePicture
+              properties:
+                bankName: 
+                  type: string
+                accountName: 
+                  type: string
+                profilePicture:
+                  type: string
+                  format: binary 
+      responses: 
+        "201":
+          description: profile picture uploaded successfully
+        "400":
+          description: something went wrong
+          
+
+ 
+
+
+  /api/v1/change-password:
+    post:
+      summary: This endpoint is to change password
+      tags: [users]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema: 
+              type: object
+              required: 
+                - oldPassword
+                - newPassword
+                - confirmPassword
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+                confirmPassword:
+                  type: string
+      responses: 
+        "201":
+          description: user successfully created
+

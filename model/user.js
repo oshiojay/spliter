@@ -16,21 +16,20 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        trim: true
+        sparse: true
     },
     password: {
         type: String,
-        required: true,
-        trim: true
+        required: true
     },
      otp: {
       type: String,
       trim: true,
-      default: () => {
-        return Math.round(Math.random() * 1e6)
-          .toString()
-          .padStart(6, "0");
-      },
+    //   default: () => {
+    //     return Math.round(Math.random() * 1e6)
+    //       .toString()
+    //       .padStart(6, "0");
+    //   },
     },
     profilePicture: {
         secureUrl: {
