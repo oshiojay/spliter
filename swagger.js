@@ -10,8 +10,12 @@ const options = {
         },
         servers:[
         {
+            url: 'https://spliter-55gs.onrender.com',
+            description: 'The hosted route'
+        },
+        {
             url: 'http://localhost:4536',
-            description: 'Documentation'
+            description: 'Localhost'
         }
     ],
     components:{
