@@ -28,7 +28,6 @@ const userSchema = new mongoose.Schema({
     //   default: () => {
     //     return Math.round(Math.random() * 1e6)
     //       .toString()
-    //       .padStart(6, "0");
     //   },
     },
     profilePicture: {
@@ -41,9 +40,17 @@ const userSchema = new mongoose.Schema({
         trim: true
         }
     },
-     isVerified: {
+    isVerified: {
       type: Boolean,
       default: false,
+    },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0
+    },
+    isLocked: {
+      type: Boolean,
+      default: false
     },
     role: {
       type: String,

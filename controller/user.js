@@ -6,6 +6,8 @@ const bcryot = require('bcrypt')
 const {emailTemplate, resetPasswordTemplate} = require('../email')
 const jwt = require('jsonwebtoken')
 const otpGenerator = require('otp-generator')
+const client = require('../utils/redis')
+
 
 exports.createUser = async(req, res)=>{
     try {
@@ -110,23 +112,40 @@ exports.verifyEmail = async (req, res)=>{
         })
     }
 }
-
 exports.login = async (req, res) => {
     try {
+
         const {email, password} = req.body;
         const user = await userModel.findOne({ email: email.toLowerCase() })
-
         if (!user){
             return res.status(404).json({
                 message: 'Invalid Credentials'
+            })
+        }
+        
+        if (user.isLocked) {
+            return res.status(423).json({
+                message: 'Account locked'
             })
         }
 
         const correctPassword = await bcryot.compare(password, user.password)
 
         if (!correctPassword) {
+            user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1
+            if (user.failedLoginAttempts >= 5){
+                user.isLocked = true
+                await user.save()
+                return res.status(429).json({
+                    message: 'Account locked'
+                })
+            }
+
+            await user.save()
+
             return res.status(400).json({
-                message: 'Invalid Credentials'
+                message: 'Invalid Credentials',
+                attemptsRemaining: 5 - user.failedLoginAttempts
             })
         }
         if (user.isVerified == false) {
@@ -134,6 +153,9 @@ exports.login = async (req, res) => {
                 message: 'Please verify your email'
             })
         };
+
+        user.failedLoginAttempts = 0
+        await user.save()
 
         const token = jwt.sign(
             {id: user._id, role: user.role},
@@ -271,6 +293,32 @@ exports.loginWithGoogle = async (req, res) => {
     } catch (error) {
         res.status(500).json({
             message: error.message
+        })
+    }
+}
+
+exports.getAllUsers = async (req, res) => {
+    try {
+        const checkCache = await client.get('users')
+        if(checkCache){
+            return res.status(200).json({
+                message: "Users retrieved successfully",
+                data: checkCache
+            })
+        }
+
+        //console.log(checkCache)
+        const users = await userModel.find()
+        await client.set('users', JSON.stringify(users), 'EX', 60)
+
+        res.status(200).json({
+            message: "Users retrieved successfully",
+            data: users
+        })
+    } catch (error) {
+        console.log(error.message)
+        res.status(500).json({
+            message: "Something went wrong"
         })
     }
 }

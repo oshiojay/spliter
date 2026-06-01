@@ -7,14 +7,31 @@ const swagger = require('./swagger')
 const PORT = process.env.PORT || 7070;
 const express_session = require('express-session')
 const {passport} = require('./middleware/passport')
+const cors = require('cors')
+
 
 const router = require('./routes/userRouter')
 const groupRouter = require('./routes/groupRouter')
 const paymentRouter = require('./routes/paymentRouter')
 
+const rateLimit = require('express-rate-limit')
+
+const limiter = rateLimit({
+	windowMs: 2 * 60 * 1000, // 15 minutes
+	limit: 2, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
+    message: 'Too many requests, please try again after 5 minutes',
+	standardHeaders: 'draft-8', // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
+	legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
+	ipv6Subnet: 56, // Set to 60 or 64 to be less aggressive, or 52 or 48 to be more aggressive
+	// store: ... , // Redis, Memcached, etc. See below.
+})
+
 
 const app = express();
 app.use(express.json());
+app.use(cors())
+app.use('/api/v1/login', limiter)
+app.use('/api/v1/reset-password', limiter)
 
 
 app.use(express_session({
@@ -25,6 +42,7 @@ app.use(express_session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
 
 app.use('/apisDocs', swaggerUi.serve, swaggerUi.setup(swagger));
 
